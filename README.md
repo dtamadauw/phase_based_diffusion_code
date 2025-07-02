@@ -9,30 +9,39 @@ This work introduces and evaluates a novel MRI method, Phase-Based Diffusion (PB
 This technique overcomes key limitations of conventional single-shot echo-planar imaging (SS-EPI), including geometric distortions and limited spatial resolution. The result is high-fidelity, high-resolution ADC and T2 maps from a single, motion-robust acquisition.
 
 This repository will provide the MATLAB code used for:
-*   The closed-form analytical signal model simulations.
-*   Monte Carlo noise performance simulations.
-*   Iterative reconstruction of ADC and T2 maps from acquired data.
-*   Processing of the volunteer data presented in the paper.
+* The closed-form analytical signal model simulations.
+* Monte Carlo noise performance simulations.
+* Iterative reconstruction of ADC and T2 maps from acquired data.
+* Processing of the phantom and volunteer data presented in the paper.
 
----
+## License
 
-## **Important Notice Regarding Code Availability**
+The primary source code in this repository, including the core PBD algorithms and associated scripts, is licensed under the **ACADEMIC SOFTWARE END USER LICENSE AGREEMENT**. Please refer to the `LICENSE` file in the root of this repository for the full terms and conditions.
 
-**The core technique described in our manuscript is subject to a pending patent filed by our institution.**
+## Third-Party Licenses
 
-Due to these intellectual property constraints, we are currently unable to release the source code publicly. We are working with our institution's patent management organization to obtain the necessary approvals for a public release.
+This repository incorporates certain third-party components, each under its own respective license. These licenses apply only to the specific portions of the code they cover.
 
-We are fully committed to reproducibility and open science. **We will upload the complete source code and relevant data to this repository as soon as we receive clearance.**
+* **Statistical Analysis Scripts:** The scripts `regression_line_ci.m` and `icc.m`, located in the `./tools/` directory, are subject to the license terms provided in `./tools/LICENSE_THIRDPARTY/LICENSE_ICC.txt`. This license applies only to these specific statistical code portions.
+* **Colormaps:** The colormaps used in this project, located in `./tools/Colormaps/`, are licensed under a CC0 "no rights reserved" license. The full license details can be found in `./tools/LICENSE_THIRDPARTY/LICENSE_COLORMAP.txt`.
 
-In the meantime, for the purpose of peer review, we are able to provide the source code privately. If you are a reviewer and require access to the code, please contact the corresponding author.
+## Usage
 
-We appreciate your understanding and patience.
+All scripts in this repository are written in MATLAB.
 
----
+To generate the figures and/or plots presented in the paper:
+* Navigate to the respective figure directory (e.g., `Figure1-3`, `Figure5`, ..., `Figure8`).
+* Each directory contains a main script (e.g., `Figure1.m`, `Figure2.m`).
+* Simply run the `Figure*.m` script within its directory to generate the corresponding figures or plots. All dependent scripts required for execution are located in the `./tools/` directory.
 
 ## Contact
 
 Daiki Tamada - dtamada@wisc.edu
 
 Project Link: [https://github.com/dtamadauw/phase_based_diffusion_code](https://github.com/dtamadauw/phase_based_diffusion_code)
+
+
+
+
+
 
