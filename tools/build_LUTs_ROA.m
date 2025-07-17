@@ -22,7 +22,6 @@
 
 function [LUTs] = build_LUTs_ROA(params, varargin)
 
-%T1s = [100:50:500 600:100:1500]*1e-3;
 if length(varargin) > 0
     T1 = varargin{1}*1e-3;
 else
@@ -30,16 +29,11 @@ else
 end
 
 
-%dphi = params.dphi;
-%dphi2 = params.dphi2;
-%C = [dphi dphi2] * (pi/180)*(1/2);
-
 
 T2s = [20:20:300]*1e-3;
 Ds = [0:250:3000]*1e-12;
 T2s_re = [20:1:300]*1e-3;
 Ds_re = [0:10:3000]*1e-12;
-%dphis = -1.0:0.1:1.0;
 dphis = [0];
 
 
@@ -58,9 +52,6 @@ G_ave = 100*area/(params.TR*1e+6);
 Gamma = 4285 * 2* pi; %[rad/Gauss]
 G = G_ave*Gamma; %[rad/m]
 
-
-
-%TR = 10e-3;
 
 TE = params.te1*1e-6;
 TR = params.TR;
@@ -86,8 +77,6 @@ D_ind = 1;
 
 disp(['T1: ' num2str(T1)]);
 
-% isROA1 = 0;
-% isROA2 = 1;
 
 if params.opuser8 == 0
     isROA1 = 0;
@@ -109,13 +98,8 @@ elseif params.opuser8 == 5
     isROA2 = 1;
 end
 
-%[y0ref] = tamaSPGR_diffusion(FAs1,TR,TE,T1,0,0,0,Ds(D_ind),0,isROA1);
-%y0ref = mean((y0ref((end-10):end)));
-%[y0ref2] = tamaSPGR_diffusion(FAs1,TR,TE,T1,dphi,0,0,Ds(D_ind),0,isROA2);
-%y0ref2 = mean((y0ref2((end-10):end)));
 
 parfor D_ind = 1:length(Ds)
-    %waitbar(D_ind/length(Ds));
     
     LUTs_mag_temp = zeros(1,length(T2s), length(dphis));
     LUTs_magSm_temp = zeros(1,length(T2s), length(dphis));
@@ -142,9 +126,6 @@ parfor D_ind = 1:length(Ds)
             [y0, ys0, epsilon_eta0] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha(1), C0, Ds(D_ind), G(1), TR);
             [y1, ys1, epsilon_eta1] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha(1), C(1), Ds(D_ind), G(2), TR);
             [y1r, ys1r] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha(1), C(2), Ds(D_ind), G(2), TR);
-    
-    %         [y0, ys0, F] = tamaSPGR_diffusion(FAs1,TR,TE,T1,T2,dphi,0,Ds(D_ind),G(1),isROA1);%isNoROA
-    %         [y1, ys1, F] = tamaSPGR_diffusion(FAs1,TR,TE,T1,T2,dphi,0,Ds(D_ind),G(2),isROA2);
     
             y_G1 = y0;%mean((y0((end-10):end)));%
             ys_G1 = ys0;%mean((ys0((end-10):end)));%
@@ -237,12 +218,6 @@ for dd = 1:length(dphis)
     LUTs_eta2_re(:,:,dd) = interp2(xx, yy, LUTs_eta2(:,:,dd), xxi, yyi);
     LUTs_theta_re(:,:,dd) = interp2(xx, yy, LUTs_theta(:,:,dd), xxi, yyi);
     LUTs_theta2_re(:,:,dd) = interp2(xx, yy, LUTs_theta2(:,:,dd), xxi, yyi);
-%     for ii=1:4
-%         LUTs_dict_re(:,:,dd,ii) = interp2(xx, yy, LUTs_dict(:,:,ii), xxi, yyi);
-%     end
-    
-%     LUTs_dict_norm = vecnorm(LUTs_dict_re,2,3);
-%     LUTs_dict_re = LUTs_dict_re./repmat(LUTs_dict_norm, [1 1 size(LUTs_dict_re,3)]);
     
     for D_ind = 1:length(Ds_re)
         T2_ind = 1;
