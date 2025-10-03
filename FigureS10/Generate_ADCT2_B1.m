@@ -20,7 +20,7 @@
 %8.	Termination.  Without prejudice to any other rights, Provider may terminate this Agreement if Recipient fails to comply with the terms of this Agreement for any reason. Upon termination for any reason, Recipient must immediately destroy all copies of the SOFTWARE in Recipient’s possession, custody, or control.	
 
 
-function [T2map, Dmap] = Generate_ADCT2(img_recon, params)
+function [T2map, Dmap] = Generate_ADCT2_B1(img_recon, params, beta_resampled)
 
 
 img_recon_sc = squeeze(img_recon);
@@ -36,12 +36,12 @@ G = G_ave*Gamma; %[rad/m]
 params.opuser8 = 0;
 
 tic;
-[LUTs] = build_LUTs_ROA(params);
+[LUTs] = build_LUTs_B1(params);
 toc;
 
 T2map=[];Dmap=[];
 parfor ii=1:size(img_recon_sc,3)
-    [T2map(:,:,ii), Dmap(:,:,ii), log] = TV_mapping_fast(img_recon_sc(:,:,ii,:), 0.00001, 0.00001, 0.00001, 0.00001, LUTs);
+    [T2map(:,:,ii), Dmap(:,:,ii), loss] = TV_mapping_fast_B1(img_recon_sc(:,:,ii,:), 0.00001, 0.00001, 0.00001, 0.00001, LUTs, beta_resampled(:,:,ii));
 end
 
 Dmap = Dmap*LUTs.x2*1e+12;

@@ -20,30 +20,96 @@
 %8.	Termination.  Without prejudice to any other rights, Provider may terminate this Agreement if Recipient fails to comply with the terms of this Agreement for any reason. Upon termination for any reason, Recipient must immediately destroy all copies of the SOFTWARE in Recipient’s possession, custody, or control.	
 
 
-function [T2map, Dmap] = Generate_ADCT2(img_recon, params)
+function [LUTs] = build_LUTs_B1(params, varargin)
+    % Define grids for T2, ADC, and Flip Angle (FA)
+    if length(varargin) > 0
+        T1 = varargin{1}*1e-3;
+    else
+        T1 = 1000*1e-3; % Assume fixed T1 of 1000 ms
+    end
+    
+    T2s = (20:20:300) * 1e-3;
+    Ds = (250:250:3000) * 1e-12;
+    FAs = (params.FA - 10) : 1 : (params.FA + 10); % FA range for B1+ correction
 
+    % Normalization scales for optimization stability
+    x1_norm = max(T2s);
+    x2_norm = max(Ds);
 
-img_recon_sc = squeeze(img_recon);
+    % Pre-calculate gradient parameters
+    area = [params.G1 params.G2];
+    G_ave = 100 * area / (params.TR * 1e+6);
+    Gamma = 4285 * 2 * pi; %[rad/Gauss]
+    G = G_ave * Gamma; %[rad/m]
+    TR = params.TR;
 
-params.G1 = 1.0*(params.opuser38);
-params.G2 = 1.0*(params.opuser37);
+    % Initialize 3D LUTs for phase values, permuted for csapi [T2, D, FA]
+    LUTs_theta = zeros(length(T2s), length(Ds), length(FAs));
+    LUTs_theta2 = zeros(length(T2s), length(Ds), length(FAs));
+    
+    disp(['Building 3D LUTs for T1: ' num2str(T1*1000) 'ms...']);
 
-area = [params.G1 params.G2];
-G_ave = 100*area/(params.TR*1e+6);
-Gamma = 4285 * 2* pi; %[rad/Gauss]
-G = G_ave*Gamma; %[rad/m]
+    % Use parfor for efficient computation over D and FA grids
+    num_D = length(Ds);
+    num_FA = length(FAs);
+    
+    % Combine D and FA loops for better parallelization load balancing
+    for idx = 1:(num_D * num_FA)
+        [D_ind, FA_ind] = ind2sub([num_D, num_FA], idx);
+        
+        D_val = Ds(D_ind);
+        FA_val = FAs(FA_ind);
+        alpha = FA_val * (pi / 180);
+        
+        % RF phase increment parameters
+        C0 = params.dphi * (pi / 180) * (1 / 2);
+        C = [params.dphi, -1.0 * params.dphi] * (pi / 180) * (1 / 2);
 
-params.opuser8 = 0;
+        % Temporary arrays for the current T2 sweep
+        theta_slice = zeros(length(T2s), 1);
+        theta2_slice = zeros(length(T2s), 1);
+        
+        for T2_ind = 1:length(T2s)
+            T2 = T2s(T2_ind);
 
-tic;
-[LUTs] = build_LUTs_ROA(params);
-toc;
+            % Calculate steady-state signals using the analytical model
+            % Note: 'analytical_SPGR_W_diffusion' must be available on the MATLAB path.
+            [y0, ~, ~] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha, C0, D_val, G(1), TR);
+            [y1, ~, ~] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha, C(1), D_val, G(2), TR);
+            [y1r, ~] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha, C(2), D_val, G(2), TR);
 
-T2map=[];Dmap=[];
-parfor ii=1:size(img_recon_sc,3)
-    [T2map(:,:,ii), Dmap(:,:,ii), log] = TV_mapping_fast(img_recon_sc(:,:,ii,:), 0.00001, 0.00001, 0.00001, 0.00001, LUTs);
+            % Store computed phase for low and high gradient moments
+            theta_slice(T2_ind) = abs(angle(y0)); % Low GM phase
+            theta2_slice(T2_ind) = abs(angle(y1 .* conj(y1r)) / 2 - pi / 2); % High GM combined phase
+        end
+        
+        % Assign the T2 sweep results to the correct slice in the 3D LUT
+        LUTs_theta(:, D_ind, FA_ind) = theta_slice;
+        LUTs_theta2(:, D_ind, FA_ind) = theta2_slice;
+    end
+    
+    disp('3D LUTs generated. Building spline models...');
+
+    % Define normalized axes for spline model creation
+    T2_axis_norm = T2s ./ x1_norm;
+    D_axis_norm = Ds ./ x2_norm;
+    FA_axis = FAs; % FA is not normalized for the model
+
+    % Build 3D spline models using the new helper function
+    mdl_theta3D = build_models3D(T2_axis_norm, D_axis_norm, FA_axis, LUTs_theta);
+    mdl_theta23D = build_models3D(T2_axis_norm, D_axis_norm, FA_axis, LUTs_theta2);
+
+    % Package outputs for the reconstruction function (leaner struct)
+    LUTs.mdl_theta3D = mdl_theta3D;
+    LUTs.mdl_theta23D = mdl_theta23D;
+    LUTs.T2s = T2s;
+    LUTs.Ds = Ds;
+    LUTs.FAs = FAs;
+    LUTs.x1 = x1_norm;
+    LUTs.x2 = x2_norm;
+    LUTs.FA0 = params.FA;
+    LUTs.FAmin = min(FAs);
+    LUTs.FAmax = max(FAs);
+
+    disp('Spline models built successfully.');
 end
-
-Dmap = Dmap*LUTs.x2*1e+12;
-T2map = T2map*LUTs.x1*1e+3;
-

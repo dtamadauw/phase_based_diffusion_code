@@ -20,30 +20,130 @@
 %8.	Termination.  Without prejudice to any other rights, Provider may terminate this Agreement if Recipient fails to comply with the terms of this Agreement for any reason. Upon termination for any reason, Recipient must immediately destroy all copies of the SOFTWARE in Recipient’s possession, custody, or control.	
 
 
-function [T2map, Dmap] = Generate_ADCT2(img_recon, params)
+addpath('../tools/');
+
+%%
+%"Determination of b-value" section
+%Equation 15
+%Calculate aparent b-value of PBD
+
+disp('Demonstration for calculation of estimated b-value');
+
+TR = 10.9e-3;
+numRO = 256;
+Gamma = 4285 * 2* pi; %[rad/Gauss/s]
+FOV = 0.256;
+BW = 4*pi*2*(125)*1e+3/numRO;%[Rad/px]
+Resolution = FOV/numRO;%[m/px]
+Tsamp = 1/BW;
+G = 2*pi/(Gamma*Resolution)*(1/TR);
+G_2pi = G*Gamma;
+SNR = [1:20];
+noise = 1./SNR;
+nex = 1000;
+
+disp(['Gradiet Moment (2*pi): ' num2str(G) ' (Gauss/m)']);
 
 
-img_recon_sc = squeeze(img_recon);
+%T1 dependency
+dphi = 2;
+FA = 20;
+C = (pi/180)*dphi/2;
+alpha = FA*(pi/180);
 
-params.G1 = 1.0*(params.opuser38);
-params.G2 = 1.0*(params.opuser37);
+T1 = 1000*1e-3;
+T2 = 120e-3;
+Ds = [0:3000]*1e-12;
 
-area = [params.G1 params.G2];
-G_ave = 100*area/(params.TR*1e+6);
-Gamma = 4285 * 2* pi; %[rad/Gauss]
-G = G_ave*Gamma; %[rad/m]
+G1 = G_2pi;
 
-params.opuser8 = 0;
+fitted = zeros(12, length(Ds));
+ydata = zeros(12, length(Ds));
 
-tic;
-[LUTs] = build_LUTs_ROA(params);
-toc;
-
-T2map=[];Dmap=[];
-parfor ii=1:size(img_recon_sc,3)
-    [T2map(:,:,ii), Dmap(:,:,ii), log] = TV_mapping_fast(img_recon_sc(:,:,ii,:), 0.00001, 0.00001, 0.00001, 0.00001, LUTs);
+for kk=1:12
+    G2 = kk*G_2pi;
+    
+    yp = zeros(1, length(Ds));
+    F0 = zeros(1, length(Ds));
+    F1 = zeros(1, length(Ds));
+    
+    for ii=1:length(Ds)
+    
+        [yp(ii),~,~,~] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha, C, Ds(ii), G2, TR);
+    
+    end
+    
+    
+    ST = @(x,xdata)(exp(-x.*1e-6.*xdata));
+    lb = [10];
+    ub = [6000];
+    opts = optimset('Display','off');
+    
+    ydata2 = real(yp);
+    ydata2 = ydata2/max(ydata2);
+    
+    [x,resnorm] = lsqcurvefit(ST,[500],Ds*1e+12,ydata2,lb,ub,opts);
+    
+    fprintf('Moment: %d*pi, Estimated b-value: %f, renorm: %f\n', kk*2, x, resnorm);
+    %disp(['Estimated b-value: ' num2str(x)]);
+    ydata(kk,:) = ydata2;
+    fitted(kk,:) = ST(x, Ds*1e+12);
 end
 
-Dmap = Dmap*LUTs.x2*1e+12;
-T2map = T2map*LUTs.x1*1e+3;
+
+
+colors = {[0 0.4470 0.7410], [0.8500 0.3250 0.0980], [0.9290 0.6940 0.1250]}; % Blue, Red, Yellow
+line_styles = {'-', '--'}; % Solid for PBD, Dashed for MESE
+method_names = {'PBD signal', 'Fitted'};
+
+
+%%
+% --- Create Two Separate, Clean Legends ---
+% This is a trick to create two legends on the same subplot.
+% First legend for methods (line styles)
+
+
+fit_ind = [4 8 12];
+figure; hold on;
+for idx = 1:length(fit_ind)
+    plot(Ds*1e+12, ydata(fit_ind(idx),:),  line_styles{1}, 'Color', colors{(idx)}, 'LineWidth', 2.5);
+    plot(Ds*1e+12, fitted(fit_ind(idx),:), line_styles{2}, 'Color', colors{(idx)}, 'LineWidth', 2);
+end
+
+xlabel('ADC (\mumm^2/s)'); ylabel('Relative Real Magnitude (a.u.)');
+D_true = G*[4 8 12];%s*Gauss/m
+set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
+
+ax1 = gca;
+
+hold(ax1, 'on');
+h_methods = gobjects(length(method_names), 1);
+for i = 1:length(method_names)
+    h_methods(i) = plot(ax1, NaN, NaN, line_styles{i}, 'Color', 'k', 'LineWidth', 2);
+end
+lgd1 = legend(h_methods, method_names, 'Location', 'northwest', 'Box', 'off');
+legend box off
+lgd1.Title.String = '';
+hold(ax1, 'off');
+set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
+
+
+% Second legend for T2 values (colors) using a hidden axes overlay
+ax_hidden = axes('Position', get(ax1, 'Position'), 'Visible', 'off');
+hold(ax_hidden, 'on');
+h_t2 = gobjects(length(D_true), 1);
+legend_labels_t2 = cell(size(D_true));
+for i = 1:length(D_true)
+    h_t2(i) = plot(ax_hidden, NaN, NaN, 's', 'MarkerFaceColor', colors{i}, 'MarkerEdgeColor', 'none', 'MarkerSize', 10);
+    legend_labels_t2{i} = sprintf('%.0f sGauss/m', D_true(i));
+end
+lgd2 = legend(h_t2, legend_labels_t2, 'Location', 'northeast', 'Box', 'off');
+lgd2.Title.String = '';
+hold(ax_hidden, 'off');
+
+set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
+
+
+disp('T2 simulation complete.');
+
 

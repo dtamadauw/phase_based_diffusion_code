@@ -20,30 +20,46 @@
 %8.	Termination.  Without prejudice to any other rights, Provider may terminate this Agreement if Recipient fails to comply with the terms of this Agreement for any reason. Upon termination for any reason, Recipient must immediately destroy all copies of the SOFTWARE in Recipient’s possession, custody, or control.	
 
 
-function [T2map, Dmap] = Generate_ADCT2(img_recon, params)
+%%
+addpath('../tools/')
+addpath('../tools/Colormaps/')
+
+%Calculate T2 and ADC maps using PBD images
+load('../data/brain_recon.mat');
+load('../data/beta_resampled.mat');
+[T2_PBD_B1, ADC_PBD_B1] = Generate_ADCT2_B1(img_recon, params, beta_resampled);
+[T2_PBD, ADC_PBD] = Generate_ADCT2_B1(img_recon, params, 100+0*beta_resampled);
+
+ADC_ratio = 100*(ADC_PBD_B1./ADC_PBD);
+T2_ratio = 100*(T2_PBD_B1./T2_PBD);
 
 
-img_recon_sc = squeeze(img_recon);
+%%
 
-params.G1 = 1.0*(params.opuser38);
-params.G2 = 1.0*(params.opuser37);
+figure;
+imagesc(ADC_PBD(:,:,2), [0 3000]); colormap(gray);axis square;colorbar;
+set(gca, 'fontname', 'Arial', 'FontSize',14,'FontWeight','normal','LineWidth',2);
+figure;
+imagesc(ADC_PBD_B1(:,:,2), [0 3000]); colormap(gray);axis square;colorbar;
+set(gca, 'fontname', 'Arial', 'FontSize',14,'FontWeight','normal','LineWidth',2);
+figure;
+imagesc(ADC_ratio(:,:,2), [75 125]); colormap(gray);axis square;colorbar;
+set(gca, 'fontname', 'Arial', 'FontSize',14,'FontWeight','normal','LineWidth',2);
 
-area = [params.G1 params.G2];
-G_ave = 100*area/(params.TR*1e+6);
-Gamma = 4285 * 2* pi; %[rad/Gauss]
-G = G_ave*Gamma; %[rad/m]
+figure;
+imagesc(T2_PBD(:,:,2), [0 200]); colormap('navia');axis square;colorbar;
+set(gca, 'fontname', 'Arial', 'FontSize',14,'FontWeight','normal','LineWidth',2);
+figure;
+imagesc(T2_PBD_B1(:,:,2), [0 200]); colormap('navia');axis square;colorbar;
+set(gca, 'fontname', 'Arial', 'FontSize',14,'FontWeight','normal','LineWidth',2);
+figure;
+imagesc(T2_ratio(:,:,2), [75 125]); colormap(gray);axis square;colorbar;
+set(gca, 'fontname', 'Arial', 'FontSize',14,'FontWeight','normal','LineWidth',2);
 
-params.opuser8 = 0;
 
-tic;
-[LUTs] = build_LUTs_ROA(params);
-toc;
+figure;
+imagesc(beta_resampled(:,:,2), [50 130]); colormap(gray);axis square;colorbar;
+set(gca, 'fontname', 'Arial', 'FontSize',14,'FontWeight','normal','LineWidth',2);
 
-T2map=[];Dmap=[];
-parfor ii=1:size(img_recon_sc,3)
-    [T2map(:,:,ii), Dmap(:,:,ii), log] = TV_mapping_fast(img_recon_sc(:,:,ii,:), 0.00001, 0.00001, 0.00001, 0.00001, LUTs);
-end
 
-Dmap = Dmap*LUTs.x2*1e+12;
-T2map = T2map*LUTs.x1*1e+3;
 

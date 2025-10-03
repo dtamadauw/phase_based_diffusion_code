@@ -20,30 +20,90 @@
 %8.	Termination.  Without prejudice to any other rights, Provider may terminate this Agreement if Recipient fails to comply with the terms of this Agreement for any reason. Upon termination for any reason, Recipient must immediately destroy all copies of the SOFTWARE in Recipient’s possession, custody, or control.	
 
 
-function [T2map, Dmap] = Generate_ADCT2(img_recon, params)
+addpath('../tools/');
 
 
-img_recon_sc = squeeze(img_recon);
+%Setup parameters
+TR = 10e-3;
+numRO = 256;
+Gamma = 4285 * 2* pi; %[rad/Gauss/s]
+FOV = 0.256;
+BW = 4*pi*2*(125)*1e+3/numRO;%[Rad/px]
+Resolution = FOV/numRO;%[m/px]
+Tsamp = 1/BW;
+G = 2*pi/(Gamma*Resolution)*(1/TR);
+G_2pi = G*Gamma;
+disp(['Gradiet Moment (2*pi): ' num2str(G) ' (Gauss/m)']);
 
-params.G1 = 1.0*(params.opuser38);
-params.G2 = 1.0*(params.opuser37);
 
-area = [params.G1 params.G2];
-G_ave = 100*area/(params.TR*1e+6);
-Gamma = 4285 * 2* pi; %[rad/Gauss]
-G = G_ave*Gamma; %[rad/m]
+%%
 
-params.opuser8 = 0;
+%Generate Figure 2a-c
+Signal_phase_dependency;
 
-tic;
-[LUTs] = build_LUTs_ROA(params);
-toc;
 
-T2map=[];Dmap=[];
-parfor ii=1:size(img_recon_sc,3)
-    [T2map(:,:,ii), Dmap(:,:,ii), log] = TV_mapping_fast(img_recon_sc(:,:,ii,:), 0.00001, 0.00001, 0.00001, 0.00001, LUTs);
+%%
+%Figure 2d-e and Figure S7
+
+dphis = [0.5 1 2 4];
+alpha = 20*(pi/180);
+D = 1000e-12;
+
+T1 = 1000e-3;
+T2s = [50:10:300]*1e-3;
+Ds = [100:100:2000]*1e-12;
+
+Phase_T2D = zeros(length(Ds),length(T2s),length(dphis));
+Phase_D1 = zeros(length(Ds),length(T2s),length(dphis));
+Phase_D2 = zeros(length(Ds),length(T2s),length(dphis));
+Abs_D1 = zeros(length(Ds),length(T2s),length(dphis));
+Abs_D2 = zeros(length(Ds),length(T2s),length(dphis));
+
+G1 = G_2pi;
+G2 = 7*G_2pi;
+
+for kk=1:length(dphis)
+for jj=1:length(T2s)
+    for ii=1:length(Ds)
+
+        C = (pi/180)*dphis(kk)/2;
+        T2 = T2s(jj);
+        D = Ds(ii);
+
+        [y1, f_1, epsilon_eta, beta] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha, C, D, G1, TR);
+        [y2, f_1, epsilon_eta, beta] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha, C, D, G2, TR);
+
+        
+        Phase_T2D(ii,jj,kk) = angle(y1.*conj(y2));
+        Phase_D1(ii,jj,kk) = angle(y1);
+        Phase_D2(ii,jj,kk) = angle(y2);
+        Abs_D1(ii,jj,kk) = abs(y1);
+        Abs_D2(ii,jj,kk) = abs(y2);
+        
+    end
+end
 end
 
-Dmap = Dmap*LUTs.x2*1e+12;
-T2map = T2map*LUTs.x1*1e+3;
+
+for ii=1:length(dphis)
+    figure;
+    contourf(1000*T2s, Ds, (Phase_D1(:,:,ii)+pi/2)*(180/pi)); axis square; 
+    colorbar;
+    title(['      \theta = ', num2str(dphis(ii))])
+    xlabel('T2 [ms]');
+    ylabel('D [\mu mm^2/s]');
+    set(gca, 'fontname', 'Arial', 'FontSize',16,'FontWeight','normal','LineWidth',2);
+    set(gcf,'units','inches','position',[0,0,5,5])
+end
+for ii=1:length(dphis)
+    figure;
+    contourf(1000*T2s, Ds, (Phase_D2(:,:,ii)+pi/2)*(180/pi)); axis square; 
+    colorbar;
+    title(['      \theta = ', num2str(dphis(ii))])
+    xlabel('T2 [ms]');
+    ylabel('D [\mu mm^2/s]');
+    set(gca, 'fontname', 'Arial', 'FontSize',16,'FontWeight','normal','LineWidth',2);
+    set(gcf,'units','inches','position',[0,0,5,5])
+end
+
 

@@ -28,25 +28,25 @@ addpath('../tools/Colormaps/')
 load('../data/brain_recon.mat');
 [T2_PBD, ADC_PBD] = Generate_ADCT2(img_recon, params);
 
+
 %Calculate T2 maps from MESE
 [T2_SE, raw_img] = T2calc_SE('../data/brain_T2dicom/');
 
 %Load ADC map measured using SS-EPI
 load('../data/brain_ADC_EPI.mat');
 
-
 %%
 
 figure;
-imagesc(ADC_PBD(end:-1:1,:,4)', [0 3000]); colormap(gray);axis square;colorbar;
+imagesc(ADC_PBD(:,:,2), [0 3000]); colormap(gray);axis square;colorbar;
 set(gca, 'fontname', 'Arial', 'FontSize',14,'FontWeight','normal','LineWidth',2);
 figure;
-imagesc(ADC_EPI(:,:,12), [0 3000]); colormap(gray);axis square;colorbar;
+imagesc(ADC_EPI(:,:,8), [0 3000]); colormap(gray);axis square;colorbar;
 set(gca, 'fontname', 'Arial', 'FontSize',14,'FontWeight','normal','LineWidth',2);
 
 
 figure;
-imagesc(T2_PBD(end:-1:1,:,4)', [0 200]); colormap('navia');axis square;colorbar;
+imagesc(T2_PBD(:,:,2), [0 200]); colormap('navia');axis square;colorbar;
 set(gca, 'fontname', 'Arial', 'FontSize',14,'FontWeight','normal','LineWidth',2);
 figure;
 imagesc(T2_SE, [0 200]); colormap('navia');axis square;colorbar;

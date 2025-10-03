@@ -20,30 +20,109 @@
 %8.	Termination.  Without prejudice to any other rights, Provider may terminate this Agreement if Recipient fails to comply with the terms of this Agreement for any reason. Upon termination for any reason, Recipient must immediately destroy all copies of the SOFTWARE in Recipient’s possession, custody, or control.	
 
 
-function [T2map, Dmap] = Generate_ADCT2(img_recon, params)
+addpath('../tools/');
+
+%Setup parameters
+TR = 10e-3;
+numRO = 256;
+Gamma = 4285 * 2* pi; %[rad/Gauss/s]
+FOV = 0.256;
+BW = 4*pi*2*(125)*1e+3/numRO;%[Rad/px]
+Resolution = FOV/numRO;%[m/px]
+Tsamp = 1/BW;
+G = 2*pi/(Gamma*Resolution)*(1/TR);
+G_2pi = G*Gamma;
+disp(['Gradiet Moment (2*pi): ' num2str(G) ' (Gauss/m)']);
+
+%%
+%Variable dPhi
+
+dphis = [2];
+alpha = 20*(pi/180);
+D = 1000e-12;
+
+T1 = 1000e-3;
+T2s = [50:10:300]*1e-3;
+Ds = [100:100:2000]*1e-12;
+
+Phase_T2D = zeros(length(Ds),length(T2s),length(dphis));
+Phase_D1 = zeros(length(Ds),length(T2s),length(dphis));
+Phase_D2 = zeros(length(Ds),length(T2s),length(dphis));
+Abs_D1 = zeros(length(Ds),length(T2s),length(dphis));
+Abs_D2 = zeros(length(Ds),length(T2s),length(dphis));
+Real_D1 = zeros(length(Ds),length(T2s),length(dphis));
+Real_D2 = zeros(length(Ds),length(T2s),length(dphis));
+Imag_D1 = zeros(length(Ds),length(T2s),length(dphis));
+Imag_D2 = zeros(length(Ds),length(T2s),length(dphis));
 
 
-img_recon_sc = squeeze(img_recon);
+G1 = G_2pi;
+G2 = 7*G_2pi;
 
-params.G1 = 1.0*(params.opuser38);
-params.G2 = 1.0*(params.opuser37);
+for kk=1:length(dphis)
+for jj=1:length(T2s)
+    for ii=1:length(Ds)
 
-area = [params.G1 params.G2];
-G_ave = 100*area/(params.TR*1e+6);
-Gamma = 4285 * 2* pi; %[rad/Gauss]
-G = G_ave*Gamma; %[rad/m]
+        C = (pi/180)*dphis(kk)/2;
+        T2 = T2s(jj);
+        D = Ds(ii);
 
-params.opuser8 = 0;
+        [y1, f_1, epsilon_eta, beta] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha, C, D, G1, TR);
+        [y2, f_1, epsilon_eta, beta] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha, C, D, G2, TR);
 
-tic;
-[LUTs] = build_LUTs_ROA(params);
-toc;
+        
+        Phase_T2D(ii,jj,kk) = angle(y1.*conj(y2));
+        Phase_D1(ii,jj,kk) = angle(y1);
+        Phase_D2(ii,jj,kk) = angle(y2);
+        Abs_D1(ii,jj,kk) = abs(y1);
+        Abs_D2(ii,jj,kk) = abs(y2);
+        Real_D1(ii,jj,kk) = real(y1);
+        Real_D2(ii,jj,kk) = real(y2);
+        Imag_D1(ii,jj,kk) = imag(y1);
+        Imag_D2(ii,jj,kk) = imag(y2);
 
-T2map=[];Dmap=[];
-parfor ii=1:size(img_recon_sc,3)
-    [T2map(:,:,ii), Dmap(:,:,ii), log] = TV_mapping_fast(img_recon_sc(:,:,ii,:), 0.00001, 0.00001, 0.00001, 0.00001, LUTs);
+
+    end
+end
 end
 
-Dmap = Dmap*LUTs.x2*1e+12;
-T2map = T2map*LUTs.x1*1e+3;
+ii=1;
+figure;
+contourf(1000*T2s, Ds, (Phase_T2D(:,:,ii))*(180/pi)); axis square; 
+colorbar;
+title(['      \theta = ', num2str(dphis(ii))])
+xlabel('T2 [ms]');
+ylabel('D [\mu mm^2/s]');
+set(gca, 'fontname', 'Arial', 'FontSize',16,'FontWeight','normal','LineWidth',2);
+set(gcf,'units','inches','position',[0,0,5,5])
+
+
+levels = [0:2.5:120];
+figure;
+contourf(1000*T2s, Ds, 100*(Abs_D2(:,:,ii)./Abs_D1(:,:,ii)), levels); axis square;  clim([30 110])
+colorbar;
+title(['      \theta = ', num2str(dphis(ii))])
+xlabel('T2 [ms]');
+ylabel('D [\mu mm^2/s]');
+set(gca, 'fontname', 'Arial', 'FontSize',16,'FontWeight','normal','LineWidth',2);
+set(gcf,'units','inches','position',[0,0,5,5])
+
+
+figure;
+contourf(1000*T2s, Ds, 100*(Real_D2(:,:,ii)./Real_D1(:,:,ii)), levels); axis square; clim([30 110])
+colorbar;
+title(['      \theta = ', num2str(dphis(ii))])
+xlabel('T2 [ms]');
+ylabel('D [\mu mm^2/s]');
+set(gca, 'fontname', 'Arial', 'FontSize',16,'FontWeight','normal','LineWidth',2);
+set(gcf,'units','inches','position',[0,0,5,5])
+
+figure;
+contourf(1000*T2s, Ds, 100*(Imag_D2(:,:,ii)./Imag_D1(:,:,ii)), levels); axis square; clim([30 110])
+colorbar;
+title(['      \theta = ', num2str(dphis(ii))])
+xlabel('T2 [ms]');
+ylabel('D [\mu mm^2/s]');
+set(gca, 'fontname', 'Arial', 'FontSize',16,'FontWeight','normal','LineWidth',2);
+set(gcf,'units','inches','position',[0,0,5,5])
 

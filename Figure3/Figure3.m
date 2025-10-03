@@ -20,30 +20,120 @@
 %8.	Termination.  Without prejudice to any other rights, Provider may terminate this Agreement if Recipient fails to comply with the terms of this Agreement for any reason. Upon termination for any reason, Recipient must immediately destroy all copies of the SOFTWARE in Recipient’s possession, custody, or control.	
 
 
-function [T2map, Dmap] = Generate_ADCT2(img_recon, params)
+addpath('../tools/');
 
+%Setup parameters
+TR = 10e-3;
+numRO = 256;
+Gamma = 4285 * 2* pi; %[rad/Gauss/s]
+FOV = 0.256;
+BW = 4*pi*2*(125)*1e+3/numRO;%[Rad/px]
+Resolution = FOV/numRO;%[m/px]
+Tsamp = 1/BW;
+G = 2*pi/(Gamma*Resolution)*(1/TR);
+G_2pi = G*Gamma;
+disp(['Gradiet Moment (2*pi): ' num2str(G) ' (Gauss/m)']);
 
-img_recon_sc = squeeze(img_recon);
+%%
 
-params.G1 = 1.0*(params.opuser38);
-params.G2 = 1.0*(params.opuser37);
+G1 = G_2pi;
+G2 = 7*G_2pi;
+dphi = 2.0;
 
-area = [params.G1 params.G2];
-G_ave = 100*area/(params.TR*1e+6);
-Gamma = 4285 * 2* pi; %[rad/Gauss]
-G = G_ave*Gamma; %[rad/m]
-
+params.TR = TR;
+params.G1 = TR*1e+4*G1/Gamma;
+params.G2 = TR*1e+4*G2/Gamma;
+params.te1 = 0;
+params.FA = 20;
+params.dphi = dphi;
 params.opuser8 = 0;
-
-tic;
 [LUTs] = build_LUTs_ROA(params);
-toc;
 
-T2map=[];Dmap=[];
-parfor ii=1:size(img_recon_sc,3)
-    [T2map(:,:,ii), Dmap(:,:,ii), log] = TV_mapping_fast(img_recon_sc(:,:,ii,:), 0.00001, 0.00001, 0.00001, 0.00001, LUTs);
+
+dphis = [2];
+FAs = [0.5:0.1:40];
+
+T1 = 1000*1e-3;
+T1s = [T1];
+T2s = [100 120 200]*1e-3;
+Ds = [800 1300 1800]*1e-12;
+
+
+Phase_D1 = zeros(length(FAs),length(dphis));
+Phase_D2 = zeros(length(FAs),length(dphis));
+
+
+for ii = 1:length(T2s)
+        for jj=1:length(FAs)
+    
+                alpha = FAs(jj)*(pi/180);
+                C = (pi/180)*dphis(1)/2;
+                T2 = T2s(ii);
+                D = Ds(ii);
+    
+                [y1, f_1, epsilon_eta, beta] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha, C, D, G1, TR);
+                [y2, f_1, epsilon_eta, beta] = analytical_SPGR_W_diffusion(TR, T1, T2, alpha, C, D, G2, TR);
+    
+                Phase_D1(jj,ii) = -1*angle(y1);
+                Phase_D2(jj,ii) = -1*angle(y2);
+    
+        end
+    
 end
 
-Dmap = Dmap*LUTs.x2*1e+12;
-T2map = T2map*LUTs.x1*1e+3;
+
+[T2_PBD, D_PBD, loss] = TV_mapping_no_penalty_ori(Phase_D1, Phase_D2, LUTs);
+T2_PBD = T2_PBD * LUTs.x1;
+D_PBD = D_PBD * LUTs.x2;
+
+
+cmap = colororder();
+LineStyle_lst = {'-', '--', ':'};
+line_width = 4;
+font_size = 12;
+
+
+figure;
+for kk = 1:length(T1s)
+plot(100*FAs./20, 100*D_PBD(:,1)./Ds(1)-100,'LineWidth',2,'Color',cmap(1,:));hold on;
+plot(100*FAs./20, 100*D_PBD(:,2)./Ds(2)-100,'LineWidth',2,'Color',cmap(2,:));
+plot(100*FAs./20, 100*D_PBD(:,3)./Ds(3)-100,'LineWidth',2,'Color',cmap(3,:));
+end
+xlim([50 200]);
+grid on;
+box on;
+yline(0, '--', 'Color', 'k'); % Zero bias line
+xline(100, '--', 'Color', 'k'); % Zero bias line
+
+
+legend({'ADC=800\mum^2/s', 'ADC=1300\mum^2/s', 'ADC=1800\mum^2/s'});legend boxoff;
+set(gca, 'FontSize', font_size);
+set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
+set(gcf,'units','inches','position',[0,0,5,5])
+xlabel('B1+ inhomogeneity (%)', 'FontSize', font_size, 'FontWeight', 'bold');
+ylabel('ADC Bias (%)', 'FontSize', font_size, 'FontWeight', 'bold');
+set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
+
+
+
+figure;
+for kk = 1:length(T1s)
+plot(100*FAs./20, 100*T2_PBD(:,1)./T2s(1)-100,'LineWidth',2,'Color',cmap(1,:));hold on;
+plot(100*FAs./20, 100*T2_PBD(:,2)./T2s(2)-100,'LineWidth',2,'Color',cmap(2,:));
+plot(100*FAs./20, 100*T2_PBD(:,3)./T2s(3)-100,'LineWidth',2,'Color',cmap(3,:));
+end
+xlim([50 200]);
+grid on;
+box on;
+yline(0, '--', 'Color', 'k'); % Zero bias line
+xline(100, '--', 'Color', 'k'); % Zero bias line
+
+
+legend({'T2=100ms', 'T2=120ms', 'T2=200ms'});legend boxoff;
+set(gca, 'FontSize', font_size);
+set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
+set(gcf,'units','inches','position',[0,0,5,5])
+xlabel('B1+ inhomogeneity (%)', 'FontSize', font_size, 'FontWeight', 'bold');
+ylabel('T2 Bias (%)', 'FontSize', font_size, 'FontWeight', 'bold');
+set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
 
