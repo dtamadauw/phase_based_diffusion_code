@@ -40,7 +40,7 @@ Figure5b
 
         * Noise Addition: Complex Gaussian noise is added to the noiseless signals. The noise variance is carefully scaled based on the receiver bandwidth and the time-normalized NSA for each method.
 
-        * Parameter Estimation: The noisy signals are passed to the respective reconstruction functions (pbd_recon.m, ssepi_recon.m, mese_recon.m) to estimate the ADC and T2 values.
+        * Parameter Estimation: Run julia code (../tools/julia) to estimate the ADC and T2 values.
 
         * Store Results: The estimated values from all iterations are stored for statistical analysis.
 
