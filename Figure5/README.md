@@ -36,11 +36,11 @@ Figure5b
 
     3.  Signal Generation: For each set of ground truth parameters, the script generates the corresponding noiseless complex signals for each imaging method (PBD, SS-EPI, SESE) using their respective physical models.
 
-    4.  Monte Carlo Loop: The script iterates through each SNR level and each set of ground truth values. Inside the loop:
+    4.  Monte Carlo Loop in Julia code: The script (../tools/julia) iterates through each SNR level and each set of ground truth values. Inside the loop:
 
         * Noise Addition: Complex Gaussian noise is added to the noiseless signals. The noise variance is carefully scaled based on the receiver bandwidth and the time-normalized NSA for each method.
 
-        * Parameter Estimation: Run julia code (../tools/julia) to estimate the ADC and T2 values.
+        * Parameter Estimation: Estimate the ADC and T2 values using the proposed approah.
 
         * Store Results: The estimated values from all iterations are stored for statistical analysis.
 
