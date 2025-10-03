@@ -6,10 +6,8 @@ This folder contains the MATLAB code used to generate the Monte Carlo simulation
 
 ## Files
 
-* `Figure5.m`: The main script that orchestrates the entire simulation, from parameter setup to final plotting.
-* `pbd_recon.m`: A function that estimates ADC and T2 values from noisy PBD signals using the analytical model.
-* `ssepi_recon.m`: A function that estimates ADC from noisy Single-Shot Echo-Planar Imaging (SS-EPI) signals.
-* `mese_recon.m`: A function that estimates T2 from noisy Multi-Echo Spin-Echo (MESE) or Single-Echo Spin-Echo (SESE) signals.
+* `Figure5a.m`: The main script for MC simulation of ADC estimation, from parameter setup to final plotting.
+* `Figure5b.m`: The main script for MC simulation of T2 estimation, from parameter setup to final plotting.
 
 ---
 
