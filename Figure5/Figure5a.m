@@ -38,7 +38,7 @@ params_EPI.TR = 5000e-3; % ms
 params_EPI.TE = 82e-3; % ms
 params_EPI.ScanTime_1dir = 1*60 + 0; % 60 seconds 
 params_EPI.ScanTime_3dir = 2*60 + 0; % 150 seconds
-params_EPI.VoxelVol = 1.875 * 1.875 * 4.0; % mm^3
+params_EPI.VoxelVol = 1.5 * 1.5 * 4.0; % mm^3
 params_EPI.Bandwidth = 1953; % Hz
 params_EPI.b_values = [0, 1000]*1e6; % s/mm^2, matching PBD's effective b-value
 params_EPI.nex_b_high = 3; 
@@ -171,7 +171,7 @@ for adc_idx = 1:length(ADC_true_m2s_values)
     plot(SNR_0_range, mean(results(adc_idx).EPI_1dir, 2), line_styles{3}, 'Color', colors{adc_idx}, 'LineWidth', 1.5);
     yline(results(adc_idx).ADC_true, '-', 'Color', [colors{adc_idx} 0.5]);
 end
-title('Mean ADC');xlim([3 50]);ylim([500 3000]);
+title('Mean ADC');xlim([3 50]);ylim([700 2100]);
 xlabel('SNR of Reference SS-EPI'); ylabel('ADC (\mum^2/s)');
 grid on; box on;
 set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
@@ -184,7 +184,7 @@ for adc_idx = 1:length(ADC_true_m2s_values)
     plot(SNR_0_range, median(results(adc_idx).EPI_1dir, 2), line_styles{3}, 'Color', colors{adc_idx}, 'LineWidth', 1.5);
     yline(results(adc_idx).ADC_true, '-', 'Color', [colors{adc_idx} 0.5]);
 end
-title('Median ADC');xlim([3 50]);ylim([500 3000]);
+title('Median ADC');xlim([3 50]);ylim([700 2100]);
 xlabel('SNR of Reference SS-EPI');
 grid on; box on;
 set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
@@ -223,7 +223,5 @@ lgd.NumColumns = 2;
 lgd.Location = 'northeast';
 legend box off
 set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
-
-sgtitle(sprintf('Time-Normalized ADC Estimation Performance (Total Time = %.1f min)', T_total/60), 'FontSize', 16, 'FontWeight', 'bold');
 
 disp('Simulation complete.');

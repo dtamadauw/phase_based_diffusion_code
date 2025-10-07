@@ -6,8 +6,10 @@ This folder contains the MATLAB code used to generate the Monte Carlo simulation
 
 ## Files
 
-* `Figure5a.m`: The main script for MC simulation of ADC estimation, from parameter setup to final plotting.
-* `Figure5b.m`: The main script for MC simulation of T2 estimation, from parameter setup to final plotting.
+* `Figure5.m`: The main script that orchestrates the entire simulation, from parameter setup to final plotting.
+* `pbd_recon.m`: A function that estimates ADC and T2 values from noisy PBD signals using the analytical model.
+* `ssepi_recon.m`: A function that estimates ADC from noisy Single-Shot Echo-Planar Imaging (SS-EPI) signals.
+* `mese_recon.m`: A function that estimates T2 from noisy Multi-Echo Spin-Echo (MESE) or Single-Echo Spin-Echo (SESE) signals.
 
 ---
 
@@ -36,11 +38,11 @@ Figure5b
 
     3.  Signal Generation: For each set of ground truth parameters, the script generates the corresponding noiseless complex signals for each imaging method (PBD, SS-EPI, SESE) using their respective physical models.
 
-    4.  Monte Carlo Loop in Julia code: The script (../tools/julia) iterates through each SNR level and each set of ground truth values. Inside the loop:
+    4.  Monte Carlo Loop: The script iterates through each SNR level and each set of ground truth values. Inside the loop:
 
         * Noise Addition: Complex Gaussian noise is added to the noiseless signals. The noise variance is carefully scaled based on the receiver bandwidth and the time-normalized NSA for each method.
 
-        * Parameter Estimation: Estimate the ADC and T2 values using the proposed approah.
+        * Parameter Estimation: The noisy signals are passed to the respective reconstruction functions (pbd_recon.m, ssepi_recon.m, mese_recon.m) to estimate the ADC and T2 values.
 
         * Store Results: The estimated values from all iterations are stored for statistical analysis.
 

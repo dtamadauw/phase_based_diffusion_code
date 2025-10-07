@@ -95,10 +95,10 @@ fprintf('Effective PBD STD per unit time (MESE) is %.2f times the EPI SNR.\n\n',
 % =========================================================================
 
 command = system('julia --threads auto ../tools/julia/main_T2.jl');
-command = system(['julia --threads auto ..tools/julia/main_PBT2.jl ',num2str(Total_Correction_Factor_SESE)]);
+command = system(['julia --threads auto ../tools/julia/main_PBT2.jl ',num2str(Total_Correction_Factor_SESE)]);
 
 load(['./MESET2_Julia.mat']);
-load(['./PBD_Julia_' num2str(Total_Correction_Factor_SESE) '.mat']);
+load(['./PBT2_Julia_' num2str(Total_Correction_Factor_SESE) '.mat']);
 %%
 
 results = struct();
@@ -126,7 +126,7 @@ fprintf('5. Analyzing and plotting results...\n');
 % --- Define Plotting Styles ---
 colors = {[0 0.4470 0.7410], [0.8500 0.3250 0.0980], [0.9290 0.6940 0.1250]}; % Blue, Red, Yellow
 line_styles = {'-', '--'}; % Solid for PBD, Dashed for MESE
-method_names = {'PBD', 'MESE'};
+method_names = {'PBD', 'SESE'};
 
 figure('Position', [50 50, 1600, 550], 'Color', 'w');
 
@@ -138,7 +138,7 @@ for t2_idx = 1:length(T2_true_s_values)
     yline(results(t2_idx).T2_true, '-', 'Color', [colors{t2_idx} 0.5]);
 end
 title('Mean T2');xlim([3 50]);ylim([80 350]);
-xlabel('SNR of Reference MESE'); ylabel('T2 (ms)');
+xlabel('SNR of Reference SESE'); ylabel('T2 (ms)');
 grid on; box on;
 set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
 
@@ -151,7 +151,7 @@ for t2_idx = 1:length(T2_true_s_values)
     yline(results(t2_idx).T2_true, '-', 'Color', [colors{t2_idx} 0.5]);
 end
 title('Median T2');xlim([3 50]);ylim([80 350]);
-xlabel('SNR of Reference MESE');
+xlabel('SNR of Reference SESE');
 grid on; box on;
 set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
 
@@ -162,7 +162,7 @@ for t2_idx = 1:length(T2_true_s_values)
     plot(SNR_0_range, std(results(t2_idx).MESE, 0, 2), line_styles{2}, 'Color', colors{t2_idx}, 'LineWidth', 2);
 end
 title('Standard Deviation');xlim([3 50]);
-xlabel('SNR of Reference MESE'); ylabel('Std. Dev. (ms)');
+xlabel('SNR of Reference SESE'); ylabel('Std. Dev. (ms)');
 set(gca, 'YScale', 'log');
 grid on; box on;
 set(gca, 'fontname', 'Arial', 'FontSize',18,'FontWeight','normal','LineWidth',2);
